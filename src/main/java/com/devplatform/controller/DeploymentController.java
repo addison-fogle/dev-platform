@@ -3,6 +3,7 @@ package com.devplatform.controller;
 import com.devplatform.dto.DeploymentRequest;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
+import com.devplatform.model.History;
 import com.devplatform.service.DeploymentManager;
 
 import lombok.RequiredArgsConstructor;
@@ -42,9 +43,9 @@ public class DeploymentController {
         return deploymentManager.getCurrentByEnvironment(environment);
     }
 
-    @GetMapping("/history")
-    public List<Deployment> getHistory(@RequestParam String service, @RequestParam String environment) {
-        return deploymentManager.getHistory(service, environment);
+    @GetMapping("/{id}/history")
+    public List<History> getHistory(@PathVariable Long id) {
+        return deploymentManager.getHistory(id);
     }
 
     @PostMapping

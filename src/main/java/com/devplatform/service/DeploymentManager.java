@@ -4,29 +4,36 @@ import com.devplatform.dto.DeploymentRequest;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
+import com.devplatform.model.History;
 import com.devplatform.model.Service;
 import com.devplatform.repository.DeploymentRepository;
 import com.devplatform.repository.EnvironmentRepository;
 import com.devplatform.repository.ServiceRepository;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import lombok.Setter;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
+@Getter
+@Setter
 public class DeploymentManager {
 
     private final DeploymentRepository deploymentRepository;
     private final ServiceRepository serviceRepository;
     private final EnvironmentRepository environmentRepository;
+    private final HistoryManager historyManager;
 
     public List<Deployment> getAll() {
         return deploymentRepository.findAll();
     }
 
+    @Transactional(readOnly = true)
     public Deployment getById(Long id) {
         return deploymentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Deployment not found: " + id));
@@ -53,6 +60,8 @@ public class DeploymentManager {
     @Transactional
     public Deployment updateStatus(Long id, DeploymentStatus status) {
         Deployment deployment = getById(id);
+        DeploymentStatus previous = deployment.getStatus();
+
         deployment.setStatus(status);
 
         if (status == DeploymentStatus.SUCCEEDED) {
@@ -60,20 +69,19 @@ public class DeploymentManager {
             deployment.setCurrent(true);
         }
 
-        return deploymentRepository.save(deployment);
+        Deployment saved = deploymentRepository.save(deployment);
+        historyManager.record(saved, previous, status);
+        return saved;
     }
 
+    public List<History> getHistory(Long deploymentId) {
+        return historyManager.getByDeploymentId(deploymentId);
+    }
+
+    @Transactional(readOnly = true)
     public List<Deployment> getCurrentByEnvironment(String environmentName) {
         Environment environment = environmentRepository.findByName(environmentName)
                 .orElseThrow(() -> new RuntimeException("Environment not found: " + environmentName));
         return deploymentRepository.findByEnvironmentAndCurrentTrue(environment);
-    }
-
-    public List<Deployment> getHistory(String serviceName, String environmentName) {
-        Service service = serviceRepository.findByName(serviceName)
-                .orElseThrow(() -> new RuntimeException("Service not found: " + serviceName));
-        Environment environment = environmentRepository.findByName(environmentName)
-                .orElseThrow(() -> new RuntimeException("Environment not found: " + environmentName));
-        return deploymentRepository.findByServiceAndEnvironmentOrderByCreatedAtDesc(service, environment);
     }
 }
