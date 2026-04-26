@@ -11,13 +11,14 @@ Kubernetes is powerful but low-level. In many teams:
 - deployments are inconsistent  
 - configurations vary between developers  
 - there is no clear record of what is running where
-- teams don't know extactly what version is on production
+- teams don't know exactly what version is on production
 - too much time is spent during outages on understanding deployment versions
+- one configuration mishap can bring down an entire service
 
-This project introduces a thin abstraction layer to:
-- standardize deployments  
-- simplify developer workflows  
-- track deployment state centrally
+This project introduces a service layer that:
+- standardizes deployments  
+- simplifies developer workflows  
+- tracks deployment state centrally
 
 ---
 
@@ -27,28 +28,16 @@ This project introduces a thin abstraction layer to:
 - Deploy containers to Kubernetes  
 - Store deployment history and status  
 - Provide a consistent path for deployments
-- Easily know what servces and versions are on production
-
-Example:
-
-deploy payments-api:v3 to dev
+- Easily know what services and versions are on production
 
 ---
 
-## Architecture
-
-- Backend: Spring Boot  
-- Database: PostgreSQL  
-- Orchestration: Kubernetes  
-- Infra: AWS
-- Monitoring: Prometheus 
-
 Core components:
-- Service registry (source of truth)
+- Registry (source of truth)
 - Deployment service (handles deploy requests)
 - Kubernetes integration layer (applies manifests)
 - Database (tracks services, environments, deployments)
-- Simpe UI
+- Simple UI
 
 ---
 
@@ -60,14 +49,11 @@ Core components:
 4. Platform generates Kubernetes manifests  
 5. Applies them to the cluster  
 6. Tracks deployment status and history
-7. Creates easy visuals and tracking in UI
+7. Creates easy visuals UI
 
 ---
 
 ## Example API
-
-### Create service
-POST /services
 
 ### Deploy
 POST /deployments
