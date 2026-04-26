@@ -1,7 +1,8 @@
 package com.devplatform.dto;
 
-import org.springframework.stereotype.Component;
-
-@Component
-public record DeploymentRequest() {
-}
+public record DeploymentRequest(
+        String serviceName,
+        String environment,
+        String imageTag,
+        String deployedBy
+) {}

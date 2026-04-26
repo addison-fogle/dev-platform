@@ -2,16 +2,19 @@ package com.devplatform.controller;
 
 import com.devplatform.dto.DeploymentRequest;
 import com.devplatform.model.Deployment;
+import com.devplatform.model.DeploymentStatus;
 import com.devplatform.service.DeploymentManager;
 
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,9 +37,24 @@ public class DeploymentController {
         return deploymentManager.getById(id);
     }
 
+    @GetMapping("/current")
+    public List<Deployment> getCurrentByEnvironment(@RequestParam String environment) {
+        return deploymentManager.getCurrentByEnvironment(environment);
+    }
+
+    @GetMapping("/history")
+    public List<Deployment> getHistory(@RequestParam String service, @RequestParam String environment) {
+        return deploymentManager.getHistory(service, environment);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Deployment create(@RequestBody DeploymentRequest request) {
-        return null;
+        return deploymentManager.create(request);
+    }
+
+    @PatchMapping("/{id}/status")
+    public Deployment updateStatus(@PathVariable Long id, @RequestBody DeploymentStatus status) {
+        return deploymentManager.updateStatus(id, status);
     }
 }

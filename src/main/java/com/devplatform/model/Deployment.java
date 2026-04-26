@@ -40,6 +40,11 @@ public class Deployment {
     @Column(nullable = false)
     private DeploymentStatus status;
 
+    private String deployedBy;
+
+    @Column(nullable = false)
+    private boolean current = false;
+
     private Instant createdAt;
 
     private Instant updatedAt;
