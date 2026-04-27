@@ -14,3 +14,5 @@ target/
 /.env.example
 
 /frontend/node_modules
+/frontend/dist/assets/index-Hgp5Ru17.css
+/frontend/dist/assets/index-1XM8H6rj.js
