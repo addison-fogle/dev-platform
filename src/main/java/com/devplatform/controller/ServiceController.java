@@ -1,5 +1,6 @@
 package com.devplatform.controller;
 
+import com.devplatform.dto.ServiceUpdateRequest;
 import com.devplatform.model.Service;
 import com.devplatform.service.ServiceManager;
 
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +40,11 @@ public class ServiceController {
     @ResponseStatus(HttpStatus.CREATED)
     public Service create(@RequestBody Service service) {
         return serviceManager.create(service);
+    }
+
+    @PatchMapping("/{id}")
+    public Service update(@PathVariable Long id, @RequestBody ServiceUpdateRequest request) {
+        return serviceManager.update(id, request);
     }
 
     @DeleteMapping("/{id}")

@@ -2,6 +2,7 @@ package com.devplatform.service;
 
 import com.devplatform.dto.DeploymentRequest;
 import com.devplatform.exceptions.NotFoundException;
+import com.devplatform.messaging.DeploymentEventPublisher;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
@@ -29,6 +30,7 @@ public class DeploymentManager {
     private final EnvironmentRepository environmentRepository;
     private final HistoryManager historyManager;
     private final MeterRegistry meterRegistry;
+    private final DeploymentEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<Deployment> getAll() {
@@ -56,7 +58,9 @@ public class DeploymentManager {
         deployment.setStatus(DeploymentStatus.PENDING);
         deployment.setCurrent(false);
 
-        return deploymentRepository.save(deployment);
+        Deployment saved = deploymentRepository.save(deployment);
+        eventPublisher.publishCreated(saved);
+        return saved;
     }
 
     @Transactional
@@ -80,11 +84,19 @@ public class DeploymentManager {
                 .register(meterRegistry)
                 .increment();
 
+        eventPublisher.publishStatusChanged(saved, previous);
         return saved;
     }
 
     public List<History> getHistory(Long deploymentId) {
         return historyManager.getByDeploymentId(deploymentId);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Deployment deployment = getById(id);
+        historyManager.deleteByDeploymentId(deployment.getId());
+        deploymentRepository.delete(deployment);
     }
 
     @Transactional(readOnly = true)

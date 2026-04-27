@@ -1,6 +1,7 @@
 package com.devplatform.service;
 
 import com.devplatform.dto.DeploymentRequest;
+import com.devplatform.messaging.DeploymentEventPublisher;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
@@ -28,6 +29,7 @@ public class DeploymentManagerTest {
     @Mock private ServiceRepository serviceRepository;
     @Mock private EnvironmentRepository environmentRepository;
     @Mock private HistoryManager historyManager;
+    @Mock private DeploymentEventPublisher eventPublisher;
 
     private SimpleMeterRegistry meterRegistry;
     private DeploymentManager manager;
@@ -38,7 +40,7 @@ public class DeploymentManagerTest {
         meterRegistry = new SimpleMeterRegistry();
         manager = new DeploymentManager(
             deploymentRepository, serviceRepository, environmentRepository,
-            historyManager, meterRegistry);
+            historyManager, meterRegistry, eventPublisher);
     }
 
     @Test

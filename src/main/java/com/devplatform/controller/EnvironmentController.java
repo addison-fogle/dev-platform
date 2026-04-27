@@ -1,5 +1,6 @@
 package com.devplatform.controller;
 
+import com.devplatform.dto.EnvironmentUpdateRequest;
 import com.devplatform.model.Environment;
 import com.devplatform.service.EnvironmentManager;
 
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,6 +40,11 @@ public class EnvironmentController {
     @ResponseStatus(HttpStatus.CREATED)
     public Environment create(@RequestBody Environment environment) {
         return environmentManager.create(environment);
+    }
+
+    @PatchMapping("/{id}")
+    public Environment update(@PathVariable Long id, @RequestBody EnvironmentUpdateRequest request) {
+        return environmentManager.update(id, request);
     }
 
     @DeleteMapping("/{id}")
