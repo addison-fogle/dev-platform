@@ -10,9 +10,9 @@ import com.devplatform.repository.DeploymentRepository;
 import com.devplatform.repository.EnvironmentRepository;
 import com.devplatform.repository.ServiceRepository;
 
-import lombok.Getter;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +20,15 @@ import java.util.List;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
-@Getter
-@Setter
 public class DeploymentManager {
 
     private final DeploymentRepository deploymentRepository;
     private final ServiceRepository serviceRepository;
     private final EnvironmentRepository environmentRepository;
     private final HistoryManager historyManager;
+    private final MeterRegistry meterRegistry;
 
+    @Transactional(readOnly = true)
     public List<Deployment> getAll() {
         return deploymentRepository.findAll();
     }
@@ -71,6 +71,13 @@ public class DeploymentManager {
 
         Deployment saved = deploymentRepository.save(deployment);
         historyManager.record(saved, previous, status);
+
+        Counter.builder("deployments.status.transitions")
+                .tag("from", previous.name())
+                .tag("to", status.name())
+                .register(meterRegistry)
+                .increment();
+
         return saved;
     }
 
