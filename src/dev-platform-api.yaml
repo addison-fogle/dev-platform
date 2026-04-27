@@ -1,9 +1,400 @@
 openapi: 3.1.0
 info:
-  title: Title
-  description: Title
+  title: Dev Platform API
+  description: Platform for standardizing Kubernetes service deployments
   version: 1.0.0
 servers:
-  - url: 'https'
+  - url: http://localhost:8080
+    description: Local development
+
 paths:
-  
+
+  # ── Services ────────────────────────────────────────────────────────────────
+
+  /v1/services:
+    get:
+      summary: List all services
+      operationId: listServices
+      tags: [Services]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+    post:
+      summary: Create a service
+      operationId: createService
+      tags: [Services]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+
+  /v1/services/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: Get a service by ID
+      operationId: getService
+      tags: [Services]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a service
+      operationId: deleteService
+      tags: [Services]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Environments ─────────────────────────────────────────────────────────────
+
+  /v1/environments:
+    get:
+      summary: List all environments
+      operationId: listEnvironments
+      tags: [Environments]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Environment'
+    post:
+      summary: Create an environment
+      operationId: createEnvironment
+      tags: [Environments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+
+  /v1/environments/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: Get an environment by ID
+      operationId: getEnvironment
+      tags: [Environments]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete an environment
+      operationId: deleteEnvironment
+      tags: [Environments]
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Deployments ──────────────────────────────────────────────────────────────
+
+  /v1/deployments:
+    get:
+      summary: List all deployments
+      operationId: listDeployments
+      tags: [Deployments]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deployment'
+    post:
+      summary: Create a deployment
+      operationId: createDeployment
+      tags: [Deployments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/deployments/current:
+    get:
+      summary: Get current deployments for an environment
+      operationId: getCurrentDeployments
+      tags: [Deployments]
+      parameters:
+        - name: environment
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Deployment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/deployments/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: Get a deployment by ID
+      operationId: getDeployment
+      tags: [Deployments]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/deployments/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    patch:
+      summary: Update deployment status
+      operationId: updateDeploymentStatus
+      tags: [Deployments]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentStatus'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/deployments/{id}/history:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      summary: Get status change history for a deployment
+      operationId: getDeploymentHistory
+      tags: [Deployments]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryEntry'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    NotFound:
+      description: Resource not found
+
+  schemas:
+
+    Service:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          type: string
+          example: payments-service
+        owner:
+          type: string
+          nullable: true
+          example: platform-team
+        imageRegistry:
+          type: string
+          nullable: true
+          example: registry.io/org
+
+    ServiceRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: payments-service
+        owner:
+          type: string
+          nullable: true
+        imageRegistry:
+          type: string
+          nullable: true
+
+    Environment:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          type: string
+          example: production
+        namespace:
+          type: string
+          nullable: true
+          example: default
+        clusterContext:
+          type: string
+          nullable: true
+          example: gke_prod_us-east1
+
+    EnvironmentRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          example: production
+        namespace:
+          type: string
+          nullable: true
+        clusterContext:
+          type: string
+          nullable: true
+
+    DeploymentStatus:
+      type: string
+      enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+
+    Deployment:
+      type: object
+      required: [id, service, environment, imageTag, status, current, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        service:
+          $ref: '#/components/schemas/Service'
+        environment:
+          $ref: '#/components/schemas/Environment'
+        imageTag:
+          type: string
+          example: v1.2.3
+        status:
+          $ref: '#/components/schemas/DeploymentStatus'
+        deployedBy:
+          type: string
+          nullable: true
+          example: jsmith
+        current:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          readOnly: true
+
+    DeploymentRequest:
+      type: object
+      required: [serviceName, environment, imageTag]
+      properties:
+        serviceName:
+          type: string
+          example: payments-service
+        environment:
+          type: string
+          example: production
+        imageTag:
+          type: string
+          example: v1.2.3
+        deployedBy:
+          type: string
+          example: jsmith
+
+    HistoryEntry:
+      type: object
+      required: [id, toStatus, changedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        fromStatus:
+          $ref: '#/components/schemas/DeploymentStatus'
+          nullable: true
+        toStatus:
+          $ref: '#/components/schemas/DeploymentStatus'
+        changedAt:
+          type: string
+          format: date-time
+          readOnly: true

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/environments")
+@RequestMapping("/v1/environments")
 @RequiredArgsConstructor
 public class EnvironmentController {
 

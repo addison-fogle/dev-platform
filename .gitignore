@@ -12,3 +12,5 @@
 /dataSources.local.xml
 target/
 /.env.example
+
+/frontend/node_modules
