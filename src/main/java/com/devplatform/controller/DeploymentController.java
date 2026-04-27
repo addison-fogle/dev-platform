@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/deployments")
+@RequestMapping("/v1/deployments")
 @RequiredArgsConstructor
 public class DeploymentController {
 

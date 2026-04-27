@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/services")
+@RequestMapping("/v1/services")
 @RequiredArgsConstructor
 public class ServiceController {
 
