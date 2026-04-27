@@ -5,9 +5,13 @@ import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
 import com.devplatform.model.Service;
 import com.devplatform.service.DeploymentManager;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testng.annotations.Test;
@@ -21,6 +25,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration
 @WebMvcTest(DeploymentController.class)
 public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
 
@@ -28,6 +34,7 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     @MockitoBean DeploymentManager deploymentManager;
 
     @Test
+    @WithMockUser
     void getAll_returnsOkWithDeploymentList() throws Exception {
         when(deploymentManager.getAll()).thenReturn(List.of(deployment(DeploymentStatus.RUNNING, false)));
 
@@ -39,6 +46,7 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    @WithMockUser
     void create_returns201WithPendingDeployment() throws Exception {
         when(deploymentManager.create(any())).thenReturn(deployment(DeploymentStatus.PENDING, false));
 
@@ -53,6 +61,7 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    @WithMockUser
     void updateStatus_toSucceeded_returnsCurrentDeployment() throws Exception {
         Deployment succeeded = deployment(DeploymentStatus.SUCCEEDED, true);
         when(deploymentManager.updateStatus(eq(1L), eq(DeploymentStatus.SUCCEEDED))).thenReturn(succeeded);
@@ -66,6 +75,7 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    @WithMockUser
     void getHistory_returnsOk() throws Exception {
         when(deploymentManager.getHistory(1L)).thenReturn(List.of());
 
@@ -75,6 +85,7 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
+    @WithMockUser
     void getCurrent_returnsDeploymentsForEnvironment() throws Exception {
         when(deploymentManager.getCurrentByEnvironment("production"))
             .thenReturn(List.of(deployment(DeploymentStatus.SUCCEEDED, true)));
