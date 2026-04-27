@@ -1,6 +1,7 @@
 package com.devplatform.service;
 
 import com.devplatform.dto.DeploymentRequest;
+import com.devplatform.exceptions.NotFoundException;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
@@ -12,6 +13,7 @@ import com.devplatform.repository.ServiceRepository;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.transaction.annotation.Transactional;
@@ -36,15 +38,15 @@ public class DeploymentManager {
     @Transactional(readOnly = true)
     public Deployment getById(Long id) {
         return deploymentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Deployment not found: " + id));
+                .orElseThrow(() -> new NotFoundException("Deployment not found: " + id));
     }
 
     @Transactional
     public Deployment create(DeploymentRequest request) {
         Service service = serviceRepository.findByName(request.serviceName())
-                .orElseThrow(() -> new RuntimeException("Service not found: " + request.serviceName()));
+                .orElseThrow(() -> new NotFoundException("Service not found: " + request.serviceName()));
         Environment environment = environmentRepository.findByName(request.environment())
-                .orElseThrow(() -> new RuntimeException("Environment not found: " + request.environment()));
+                .orElseThrow(() -> new NotFoundException("Environment not found: " + request.environment()));
 
         Deployment deployment = new Deployment();
         deployment.setService(service);
@@ -88,7 +90,7 @@ public class DeploymentManager {
     @Transactional(readOnly = true)
     public List<Deployment> getCurrentByEnvironment(String environmentName) {
         Environment environment = environmentRepository.findByName(environmentName)
-                .orElseThrow(() -> new RuntimeException("Environment not found: " + environmentName));
+                .orElseThrow(() -> new NotFoundException("Environment not found: " + environmentName));
         return deploymentRepository.findByEnvironmentAndCurrentTrue(environment);
     }
 }
