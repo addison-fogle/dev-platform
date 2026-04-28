@@ -3,9 +3,7 @@ kind: Ingress
 metadata:
   name: dev-platform
   namespace: dev-platform
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
+fix imagespec:
   ingressClassName: nginx
   rules:
     - host: dev-platform.local
