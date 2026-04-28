@@ -16,7 +16,7 @@ metadata:
 type: Opaque
 stringData:
   SPRING_DATASOURCE_USERNAME: postgres
-  SPRING_DATASOURCE_PASSWORD: changeme
+  SPRING_DATASOURCE_PASSWORD: postgres
   SPRING_RABBITMQ_USERNAME: guest
   SPRING_RABBITMQ_PASSWORD: guest
 ---
@@ -28,5 +28,5 @@ metadata:
 type: Opaque
 stringData:
   POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: changeme
+  POSTGRES_PASSWORD: postgres
   POSTGRES_DB: devplatform
