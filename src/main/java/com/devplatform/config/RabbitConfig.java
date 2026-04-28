@@ -1,4 +1,4 @@
-package com.devplatform.messaging;
+package com.devplatform.config;
 
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
