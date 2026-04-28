@@ -114,9 +114,9 @@ public class DeploymentManagerTest {
 
         when(serviceRepository.findByName("api")).thenReturn(Optional.of(service));
         when(environmentRepository.findByName("staging")).thenReturn(Optional.of(env));
-        when(deploymentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(deploymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
 
-        Deployment result = manager.create(new DeploymentRequest("api", "staging", "v2.0.0", "alice"));
+        Deployment result = manager.create(new DeploymentRequest("api", "staging", "v2.0.0", "alice"), null);
 
         assertThat(result.getStatus()).isEqualTo(DeploymentStatus.PENDING);
         assertThat(result.isCurrent()).isFalse();
@@ -127,7 +127,7 @@ public class DeploymentManagerTest {
     void create_throwsWhenServiceNotFound() {
         when(serviceRepository.findByName("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> manager.create(new DeploymentRequest("missing", "production", "v1.0.0", "alice")))
+        assertThatThrownBy(() -> manager.create(new DeploymentRequest("missing", "production", "v1.0.0", "alice"), null))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("missing");
     }

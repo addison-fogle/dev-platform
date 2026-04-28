@@ -15,8 +15,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiError> conflict(DataIntegrityViolationException ex) {
-        return body(HttpStatus.CONFLICT, "Conflict: a resource with the same unique field already exists");
+    public ResponseEntity<ApiError> sqlError(DataIntegrityViolationException ex) {
+        return body(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

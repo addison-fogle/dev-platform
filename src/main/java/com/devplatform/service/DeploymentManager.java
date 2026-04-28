@@ -17,9 +17,11 @@ import io.micrometer.core.instrument.MeterRegistry;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @org.springframework.stereotype.Service
 @RequiredArgsConstructor
@@ -44,7 +46,12 @@ public class DeploymentManager {
     }
 
     @Transactional
-    public Deployment create(DeploymentRequest request) {
+    public Deployment create(DeploymentRequest request, String idempotencyKey) {
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<Deployment> existing = deploymentRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) return existing.get();
+        }
+
         Service service = serviceRepository.findByName(request.serviceName())
                 .orElseThrow(() -> new NotFoundException("Service not found: " + request.serviceName()));
         Environment environment = environmentRepository.findByName(request.environment())
@@ -57,8 +64,18 @@ public class DeploymentManager {
         deployment.setDeployedBy(request.deployedBy());
         deployment.setStatus(DeploymentStatus.PENDING);
         deployment.setCurrent(false);
+        deployment.setIdempotencyKey(idempotencyKey);
 
-        Deployment saved = deploymentRepository.save(deployment);
+        Deployment saved;
+        try {
+            saved = deploymentRepository.saveAndFlush(deployment);
+        } catch (DataIntegrityViolationException ex) {
+            if (idempotencyKey != null) {
+                return deploymentRepository.findByIdempotencyKey(idempotencyKey)
+                        .orElseThrow(() -> ex);
+            }
+            throw ex;
+        }
         eventPublisher.publishCreated(saved);
         return saved;
     }

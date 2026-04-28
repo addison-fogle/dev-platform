@@ -45,6 +45,9 @@ public class Deployment {
     @Column(nullable = false)
     private boolean current = false;
 
+    @Column(unique = true)
+    private String idempotencyKey;
+
     private Instant createdAt;
 
     private Instant updatedAt;

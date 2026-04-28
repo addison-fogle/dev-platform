@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,10 +22,12 @@ public class DeploymentEventPublisher {
     @Value("${devplatform.rabbit.exchange}")
     private String exchange;
 
+    @Async("deploymentExecutor")
     public void publishCreated(Deployment deployment) {
         publish("deployment.created", DeploymentEvent.created(deployment));
     }
 
+    @Async("deploymentExecutor")
     public void publishStatusChanged(Deployment deployment, DeploymentStatus from) {
         publish("deployment.status." + deployment.getStatus().name(),
                 DeploymentEvent.statusChanged(deployment, from));

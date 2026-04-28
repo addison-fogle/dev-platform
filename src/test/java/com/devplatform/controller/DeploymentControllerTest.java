@@ -48,7 +48,7 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     @Test
     @WithMockUser
     void create_returns201WithPendingDeployment() throws Exception {
-        when(deploymentManager.create(any())).thenReturn(deployment(DeploymentStatus.PENDING, false));
+        when(deploymentManager.create(any(), any())).thenReturn(deployment(DeploymentStatus.PENDING, false));
 
         mockMvc.perform(post("/v1/deployments")
                 .contentType("application/json")
