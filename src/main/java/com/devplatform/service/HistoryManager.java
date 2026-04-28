@@ -31,4 +31,9 @@ public class HistoryManager {
     public List<History> getByDeploymentId(Long deploymentId) {
         return historyRepository.findByDeploymentId(deploymentId);
     }
+
+    @Transactional
+    public void deleteByDeploymentId(Long deploymentId) {
+        historyRepository.deleteByDeploymentId(deploymentId);
+    }
 }

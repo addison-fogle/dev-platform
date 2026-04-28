@@ -1,5 +1,7 @@
 package com.devplatform.service;
 
+import com.devplatform.dto.EnvironmentUpdateRequest;
+import com.devplatform.exceptions.NotFoundException;
 import com.devplatform.model.Environment;
 import com.devplatform.repository.EnvironmentRepository;
 
@@ -24,11 +26,20 @@ public class EnvironmentManager {
     @Transactional(readOnly = true)
     public Environment getById(Long id) {
         return environmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Environment not found: " + id));
+                .orElseThrow(() -> new NotFoundException("Environment not found: " + id));
     }
 
     @Transactional
     public Environment create(Environment environment) {
+        return environmentRepository.save(environment);
+    }
+
+    @Transactional
+    public Environment update(Long id, EnvironmentUpdateRequest request) {
+        Environment environment = getById(id);
+        if (request.name() != null) environment.setName(request.name());
+        if (request.namespace() != null) environment.setNamespace(request.namespace());
+        if (request.clusterContext() != null) environment.setClusterContext(request.clusterContext());
         return environmentRepository.save(environment);
     }
 

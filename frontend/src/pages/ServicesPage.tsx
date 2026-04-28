@@ -22,7 +22,7 @@ export default function ServicesPage() {
     try {
       await api.services.create({ name, owner: owner || null, imageRegistry: imageRegistry || null })
       setName(''); setOwner(''); setImageRegistry('')
-      load()
+      await load()
     } catch (e) { setError(String(e)) }
   }
 

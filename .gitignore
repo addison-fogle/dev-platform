@@ -11,6 +11,9 @@
 /dataSources/
 /dataSources.local.xml
 target/
-/.env.example
+/.env
 
 /frontend/node_modules
+/frontend/dist/assets/index-Hgp5Ru17.css
+/frontend/dist/assets/index-1XM8H6rj.js
+/frontend/dist/assets/index-BH99zEHk.js
