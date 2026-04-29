@@ -23,6 +23,20 @@ module "eks" {
   # Grants the identity running terraform cluster-admin access automatically
   enable_cluster_creator_admin_permissions = true
 
+  access_entries = {
+    github-actions = {
+      principal_arn = "arn:aws:iam::532421558307:role/github-actions-deploy"
+      policy_associations = {
+        admin = {
+          policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
+
   tags = {
     Environment = "dev"
     ManagedBy   = "terraform"

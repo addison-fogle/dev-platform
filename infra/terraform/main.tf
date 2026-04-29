@@ -16,11 +16,8 @@ terraform {
     }
   }
 
-  # Store state in S3 so it's shared and survives local machine loss.
-  # Create the bucket manually before running terraform init.
-  # Cannot use variables here — fill in bucket/region directly.
   backend "s3" {
-    bucket = "your-tfstate-bucket"
+    bucket = "tf-resource-bucket-532421558307-us-west-2-an"
     key    = "dev-platform/terraform.tfstate"
     region = "us-west-2"
   }
