@@ -3,7 +3,7 @@ kind: Ingress
 metadata:
   name: dev-platform
   namespace: dev-platform
-fix imagespec:
+spec:
   ingressClassName: nginx
   rules:
     - host: dev-platform.local
