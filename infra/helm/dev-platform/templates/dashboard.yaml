@@ -1,0 +1,62 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+    {{- include "dev-platform.labels" . | nindent 4 }}
+data:
+  backend-dashboard.json: |
+    {
+      "title": "Dev Platform Backend",
+      "uid": "dev-platform-backend",
+      "schemaVersion": 38,
+      "panels": [
+        {
+          "id": 1,
+          "title": "HTTP Request Rate",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"{{ .Release.Namespace }}\"}[5m])) by (uri, status)",
+              "legendFormat": "{{ "{{uri}} {{status}}" }}"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "JVM Heap Memory",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "fieldConfig": {
+            "defaults": { "unit": "bytes" }
+          },
+          "targets": [
+            {
+              "expr": "jvm_memory_used_bytes{area=\"heap\", namespace=\"{{ .Release.Namespace }}\"}",
+              "legendFormat": "used"
+            },
+            {
+              "expr": "jvm_memory_max_bytes{area=\"heap\", namespace=\"{{ .Release.Namespace }}\"}",
+              "legendFormat": "max"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "HTTP Error Rate (5xx)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"{{ .Release.Namespace }}\", status=~\"5..\"}[5m]))",
+              "legendFormat": "errors/s"
+            }
+          ]
+        }
+      ]
+    }
+{{- end }}
