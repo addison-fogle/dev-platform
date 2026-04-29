@@ -4,9 +4,9 @@ metadata:
   name: backend-config
   namespace: dev-platform
 data:
-  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/devplatform
-  SPRING_RABBITMQ_HOST: rabbitmq
   DEVPLATFORM_RABBIT_EXCHANGE: deployments
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres.dev-platform.svc.cluster.local:5432/devplatform
+  SPRING_RABBITMQ_HOST: rabbitmq.dev-platform.svc.cluster.local
 ---
 apiVersion: v1
 kind: Secret
