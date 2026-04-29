@@ -18,4 +18,4 @@ target/
 /frontend/dist/assets/index-1XM8H6rj.js
 /frontend/dist/assets/index-BH99zEHk.js
 
-ignterraform/.terraform/*
+infra/terraform/.terraform/*
