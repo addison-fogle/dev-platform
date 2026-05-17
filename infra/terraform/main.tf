@@ -20,7 +20,7 @@ terraform {
   # Create the bucket manually before running terraform init.
   # Cannot use variables here — fill in bucket/region directly.
   backend "s3" {
-    bucket = "your-tfstate-bucket"
+    bucket = "TBA"
     key    = "dev-platform/terraform.tfstate"
     region = "us-west-2"
   }

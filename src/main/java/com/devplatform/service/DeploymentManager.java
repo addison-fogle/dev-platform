@@ -19,6 +19,8 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.Optional;
@@ -76,7 +78,9 @@ public class DeploymentManager {
             }
             throw ex;
         }
-        eventPublisher.publishCreated(saved);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { eventPublisher.publishCreated(saved); }
+        });
         return saved;
     }
 
@@ -101,7 +105,9 @@ public class DeploymentManager {
                 .register(meterRegistry)
                 .increment();
 
-        eventPublisher.publishStatusChanged(saved, previous);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { eventPublisher.publishStatusChanged(saved, previous); }
+        });
         return saved;
     }
 

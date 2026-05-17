@@ -5,13 +5,10 @@ import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
 import com.devplatform.model.Service;
 import com.devplatform.service.DeploymentManager;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testng.annotations.Test;
@@ -25,8 +22,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ExtendWith(SpringExtension.class)
-@ContextConfiguration
 @WebMvcTest(DeploymentController.class)
 public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
 

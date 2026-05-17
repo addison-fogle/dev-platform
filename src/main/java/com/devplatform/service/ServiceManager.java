@@ -1,5 +1,6 @@
 package com.devplatform.service;
 
+import com.devplatform.dto.ServiceCreateRequest;
 import com.devplatform.dto.ServiceUpdateRequest;
 import com.devplatform.exceptions.NotFoundException;
 import com.devplatform.model.Service;
@@ -29,7 +30,11 @@ public class ServiceManager {
     }
 
     @Transactional
-    public Service create(Service service) {
+    public Service create(ServiceCreateRequest request) {
+        Service service = new Service();
+        service.setName(request.name());
+        service.setOwner(request.owner());
+        service.setImageRegistry(request.imageRegistry());
         return serviceRepository.save(service);
     }
 

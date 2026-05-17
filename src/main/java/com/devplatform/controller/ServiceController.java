@@ -1,11 +1,13 @@
 package com.devplatform.controller;
 
+import com.devplatform.dto.ServiceCreateRequest;
 import com.devplatform.dto.ServiceUpdateRequest;
 import com.devplatform.model.Service;
 import com.devplatform.service.ServiceManager;
 
 import lombok.RequiredArgsConstructor;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,8 +40,8 @@ public class ServiceController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Service create(@RequestBody Service service) {
-        return serviceManager.create(service);
+    public Service create(@Valid @RequestBody ServiceCreateRequest request) {
+        return serviceManager.create(request);
     }
 
     @PatchMapping("/{id}")

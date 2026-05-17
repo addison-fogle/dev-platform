@@ -17,7 +17,7 @@ public interface DeploymentRepository extends JpaRepository<Deployment, Long> {
 
     Optional<Deployment> findByIdempotencyKey(String idempotencyKey);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Deployment d SET d.current = false WHERE d.service = :service AND d.environment = :environment AND d.current = true")
     void clearCurrent(Service service, Environment environment);
 }

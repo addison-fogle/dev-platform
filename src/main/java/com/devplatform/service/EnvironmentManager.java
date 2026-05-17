@@ -1,5 +1,6 @@
 package com.devplatform.service;
 
+import com.devplatform.dto.EnvironmentCreateRequest;
 import com.devplatform.dto.EnvironmentUpdateRequest;
 import com.devplatform.exceptions.NotFoundException;
 import com.devplatform.model.Environment;
@@ -30,7 +31,11 @@ public class EnvironmentManager {
     }
 
     @Transactional
-    public Environment create(Environment environment) {
+    public Environment create(EnvironmentCreateRequest request) {
+        Environment environment = new Environment();
+        environment.setName(request.name());
+        environment.setNamespace(request.namespace());
+        environment.setClusterContext(request.clusterContext());
         return environmentRepository.save(environment);
     }
 

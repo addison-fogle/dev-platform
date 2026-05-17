@@ -1,11 +1,13 @@
 package com.devplatform.controller;
 
+import com.devplatform.dto.EnvironmentCreateRequest;
 import com.devplatform.dto.EnvironmentUpdateRequest;
 import com.devplatform.model.Environment;
 import com.devplatform.service.EnvironmentManager;
 
 import lombok.RequiredArgsConstructor;
 
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,8 +40,8 @@ public class EnvironmentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Environment create(@RequestBody Environment environment) {
-        return environmentManager.create(environment);
+    public Environment create(@Valid @RequestBody EnvironmentCreateRequest request) {
+        return environmentManager.create(request);
     }
 
     @PatchMapping("/{id}")

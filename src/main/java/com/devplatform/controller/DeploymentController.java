@@ -6,6 +6,7 @@ import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.History;
 import com.devplatform.service.DeploymentManager;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.http.HttpStatus;
@@ -52,7 +53,7 @@ public class DeploymentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Deployment create(@RequestBody DeploymentRequest request,
+    public Deployment create(@Valid @RequestBody DeploymentRequest request,
                              @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         return deploymentManager.create(request, idempotencyKey);
     }
