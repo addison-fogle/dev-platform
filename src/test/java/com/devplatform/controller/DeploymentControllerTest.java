@@ -71,6 +71,20 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
 
     @Test
     @WithMockUser
+    void rollback_returns201WithPendingDeployment() throws Exception {
+        when(deploymentManager.rollback(eq(1L), eq("alice"), any())).thenReturn(deployment(DeploymentStatus.PENDING, false));
+
+        mockMvc.perform(post("/v1/deployments/1/rollback")
+                .contentType("application/json")
+                .content("""
+                    {"deployedBy":"alice"}
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    @WithMockUser
     void getHistory_returnsOk() throws Exception {
         when(deploymentManager.getHistory(1L)).thenReturn(List.of());
 

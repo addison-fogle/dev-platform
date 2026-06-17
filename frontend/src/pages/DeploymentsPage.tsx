@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment } from 'react'
 import { api } from '../api'
 import type { Deployment, DeploymentStatus, HistoryEntry } from '../types'
 
-const STATUSES: DeploymentStatus[] = ['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED']
+const STATUSES: DeploymentStatus[] = ['PENDING', 'RUNNING', 'SUCCEEDED', 'FAILED', 'STOPPED']
 
 export default function DeploymentsPage() {
   const [deployments, setDeployments] = useState<Deployment[]>([])
@@ -43,6 +43,14 @@ export default function DeploymentsPage() {
       setPendingStatus(prev => { const next = { ...prev }; delete next[id]; return next })
       load()
       if (selectedId === id) loadHistory(id)
+    } catch (e) { setError(String(e)) }
+  }
+
+  async function rollback(id: number) {
+    setError('')
+    try {
+      await api.deployments.rollback(id, deployedBy || 'platform-ui')
+      load()
     } catch (e) { setError(String(e)) }
   }
 
@@ -92,12 +100,13 @@ export default function DeploymentsPage() {
               <th>Deployed By</th>
               <th>Created</th>
               <th>Update Status</th>
+              <th>Rollback</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {deployments.length === 0 ? (
-              <tr><td colSpan={9} className="empty">No deployments yet</td></tr>
+              <tr><td colSpan={10} className="empty">No deployments yet</td></tr>
             ) : deployments.map(d => (
               <Fragment key={d.id}>
                 <tr>
@@ -130,6 +139,15 @@ export default function DeploymentsPage() {
                   </td>
                   <td>
                     <button
+                      className="btn-ghost btn-sm"
+                      onClick={() => rollback(d.id)}
+                      title="Create a new deployment from the previous successful image"
+                    >
+                      Rollback
+                    </button>
+                  </td>
+                  <td>
+                    <button
                       className={`btn-ghost btn-sm${selectedId === d.id ? ' active' : ''}`}
                       onClick={() => loadHistory(d.id)}
                     >
@@ -139,7 +157,7 @@ export default function DeploymentsPage() {
                 </tr>
                 {selectedId === d.id && (
                   <tr>
-                    <td colSpan={9} style={{ padding: 0 }}>
+                    <td colSpan={10} style={{ padding: 0 }}>
                       <div className="history-panel">
                         <h3>History — {d.service.name} @ {d.environment.name}</h3>
                         {history.length === 0 ? (

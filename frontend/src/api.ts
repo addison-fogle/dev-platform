@@ -28,6 +28,8 @@ export const api = {
   deployments: {
     list: () => req<Deployment[]>('/deployments'),
     create: (data: DeploymentRequest) => req<Deployment>('/deployments', { method: 'POST', ...json(data) }),
+    rollback: (id: number, deployedBy: string) =>
+      req<Deployment>(`/deployments/${id}/rollback`, { method: 'POST', ...json({ deployedBy }) }),
     updateStatus: (id: number, status: DeploymentStatus) =>
       req<Deployment>(`/deployments/${id}/status`, { method: 'PATCH', ...json(status) }),
     history: (id: number) => req<HistoryEntry[]>(`/deployments/${id}/history`),

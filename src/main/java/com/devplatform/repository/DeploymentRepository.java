@@ -17,6 +17,12 @@ public interface DeploymentRepository extends JpaRepository<Deployment, Long> {
 
     Optional<Deployment> findByIdempotencyKey(String idempotencyKey);
 
+    Optional<Deployment> findTopByServiceAndEnvironmentAndStatusAndIdLessThanOrderByIdDesc(
+            Service service,
+            Environment environment,
+            com.devplatform.model.DeploymentStatus status,
+            Long id);
+
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Deployment d SET d.current = false WHERE d.service = :service AND d.environment = :environment AND d.current = true")
     void clearCurrent(Service service, Environment environment);

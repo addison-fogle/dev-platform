@@ -224,6 +224,29 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/deployments/{id}/rollback:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      summary: Create a rollback deployment
+      operationId: rollbackDeployment
+      tags: [Deployments]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackRequest'
+      responses:
+        '201':
+          description: Rollback deployment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deployment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/deployments/{id}/history:
     parameters:
       - $ref: '#/components/parameters/Id'
@@ -330,7 +353,7 @@ components:
 
     DeploymentStatus:
       type: string
-      enum: [PENDING, RUNNING, SUCCEEDED, FAILED]
+      enum: [PENDING, RUNNING, SUCCEEDED, FAILED, STOPPED]
 
     Deployment:
       type: object
@@ -377,6 +400,13 @@ components:
         imageTag:
           type: string
           example: v1.2.3
+        deployedBy:
+          type: string
+          example: jsmith
+
+    RollbackRequest:
+      type: object
+      properties:
         deployedBy:
           type: string
           example: jsmith

@@ -1,6 +1,7 @@
 package com.devplatform.controller;
 
 import com.devplatform.dto.DeploymentRequest;
+import com.devplatform.dto.RollbackRequest;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.History;
@@ -56,6 +57,15 @@ public class DeploymentController {
     public Deployment create(@Valid @RequestBody DeploymentRequest request,
                              @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         return deploymentManager.create(request, idempotencyKey);
+    }
+
+    @PostMapping("/{id}/rollback")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Deployment rollback(@PathVariable Long id,
+                               @RequestBody(required = false) RollbackRequest request,
+                               @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        String deployedBy = request == null ? null : request.deployedBy();
+        return deploymentManager.rollback(id, deployedBy, idempotencyKey);
     }
 
     @PatchMapping("/{id}/status")

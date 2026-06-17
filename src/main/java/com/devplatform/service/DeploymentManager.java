@@ -35,6 +35,7 @@ public class DeploymentManager {
     private final HistoryManager historyManager;
     private final MeterRegistry meterRegistry;
     private final DeploymentEventPublisher eventPublisher;
+    private final DeploymentPolicy deploymentPolicy;
 
     @Transactional(readOnly = true)
     public List<Deployment> getAll() {
@@ -59,6 +60,8 @@ public class DeploymentManager {
         Environment environment = environmentRepository.findByName(request.environment())
                 .orElseThrow(() -> new NotFoundException("Environment not found: " + request.environment()));
 
+        deploymentPolicy.validateCreate(request, service, environment);
+
         Deployment deployment = new Deployment();
         deployment.setService(service);
         deployment.setEnvironment(environment);
@@ -78,9 +81,60 @@ public class DeploymentManager {
             }
             throw ex;
         }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override public void afterCommit() { eventPublisher.publishCreated(saved); }
-        });
+        publishAfterCommit(() -> eventPublisher.publishCreated(saved));
+        return saved;
+    }
+
+    @Transactional
+    public Deployment rollback(Long id, String deployedBy, String idempotencyKey) {
+        Deployment target = getById(id);
+
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<Deployment> existing = deploymentRepository.findByIdempotencyKey(idempotencyKey);
+            if (existing.isPresent()) return existing.get();
+        }
+
+        Deployment previous = deploymentRepository
+                .findTopByServiceAndEnvironmentAndStatusAndIdLessThanOrderByIdDesc(
+                        target.getService(),
+                        target.getEnvironment(),
+                        DeploymentStatus.SUCCEEDED,
+                        target.getId())
+                .orElseThrow(() -> new NotFoundException("No previous successful deployment found for rollback: " + id));
+
+        DeploymentRequest request = new DeploymentRequest(
+                target.getService().getName(),
+                target.getEnvironment().getName(),
+                previous.getImageTag(),
+                deployedBy);
+        deploymentPolicy.validateCreate(request, target.getService(), target.getEnvironment());
+
+        Deployment rollback = new Deployment();
+        rollback.setService(target.getService());
+        rollback.setEnvironment(target.getEnvironment());
+        rollback.setImageTag(previous.getImageTag());
+        rollback.setDeployedBy(deployedBy);
+        rollback.setStatus(DeploymentStatus.PENDING);
+        rollback.setCurrent(false);
+        rollback.setIdempotencyKey(idempotencyKey);
+
+        Deployment saved;
+        try {
+            saved = deploymentRepository.saveAndFlush(rollback);
+        } catch (DataIntegrityViolationException ex) {
+            if (idempotencyKey != null) {
+                return deploymentRepository.findByIdempotencyKey(idempotencyKey)
+                        .orElseThrow(() -> ex);
+            }
+            throw ex;
+        }
+
+        historyManager.record(saved, null, DeploymentStatus.PENDING);
+        publishAfterCommit(() -> eventPublisher.publishCreated(saved));
+        Counter.builder("deployments.rollback.created")
+                .tag("environment", target.getEnvironment().getName())
+                .register(meterRegistry)
+                .increment();
         return saved;
     }
 
@@ -105,9 +159,7 @@ public class DeploymentManager {
                 .register(meterRegistry)
                 .increment();
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override public void afterCommit() { eventPublisher.publishStatusChanged(saved, previous); }
-        });
+        publishAfterCommit(() -> eventPublisher.publishStatusChanged(saved, previous));
         return saved;
     }
 
@@ -127,5 +179,15 @@ public class DeploymentManager {
         Environment environment = environmentRepository.findByName(environmentName)
                 .orElseThrow(() -> new NotFoundException("Environment not found: " + environmentName));
         return deploymentRepository.findByEnvironmentAndCurrentTrue(environment);
+    }
+
+    private void publishAfterCommit(Runnable action) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            action.run();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { action.run(); }
+        });
     }
 }

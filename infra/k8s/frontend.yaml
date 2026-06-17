@@ -1,4 +1,10 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: frontend
+  namespace: dev-platform
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: frontend
@@ -25,9 +31,14 @@ spec:
       labels:
         app: frontend
     spec:
+      serviceAccountName: frontend
       containers:
         - name: frontend
           image: ghcr.io/addison-fogle/dev-platform-frontend:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: 80
           readinessProbe:
@@ -42,3 +53,52 @@ spec:
               memory: 64Mi
             limits:
               memory: 128Mi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend
+  namespace: dev-platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend
+  namespace: dev-platform
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-ingress
+  namespace: dev-platform
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 80

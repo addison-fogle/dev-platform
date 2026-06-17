@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BASE_URL="${DEV_PLATFORM_URL:-http://localhost:8080}"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  dev-platform services list
+  dev-platform environments list
+  dev-platform deployments list
+  dev-platform deployments current --env ENV
+  dev-platform deploy SERVICE --env ENV --image IMAGE [--by USER]
+  dev-platform rollback DEPLOYMENT_ID [--by USER]
+
+Environment:
+  DEV_PLATFORM_URL  API base URL, defaults to http://localhost:8080
+EOF
+}
+
+json_post() {
+  local path="$1"
+  local body="$2"
+  curl -sS -X POST "$BASE_URL$path" \
+    -H 'Content-Type: application/json' \
+    -d "$body"
+}
+
+get() {
+  curl -sS "$BASE_URL$1"
+}
+
+require_value() {
+  local name="$1"
+  local value="$2"
+  if [[ -z "$value" ]]; then
+    echo "Missing required value: $name" >&2
+    exit 2
+  fi
+}
+
+command="${1:-}"
+shift || true
+
+case "$command" in
+  services)
+    [[ "${1:-}" == "list" ]] || { usage; exit 2; }
+    get "/v1/services"
+    ;;
+  environments)
+    [[ "${1:-}" == "list" ]] || { usage; exit 2; }
+    get "/v1/environments"
+    ;;
+  deployments)
+    subcommand="${1:-}"
+    shift || true
+    case "$subcommand" in
+      list)
+        get "/v1/deployments"
+        ;;
+      current)
+        env=""
+        while [[ $# -gt 0 ]]; do
+          case "$1" in
+            --env) env="${2:-}"; shift 2 ;;
+            *) usage; exit 2 ;;
+          esac
+        done
+        require_value "--env" "$env"
+        get "/v1/deployments/current?environment=$env"
+        ;;
+      *)
+        usage
+        exit 2
+        ;;
+    esac
+    ;;
+  deploy)
+    service="${1:-}"
+    shift || true
+    env=""
+    image=""
+    deployed_by="${USER:-cli}"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --env) env="${2:-}"; shift 2 ;;
+        --image) image="${2:-}"; shift 2 ;;
+        --by) deployed_by="${2:-}"; shift 2 ;;
+        *) usage; exit 2 ;;
+      esac
+    done
+    require_value "SERVICE" "$service"
+    require_value "--env" "$env"
+    require_value "--image" "$image"
+    json_post "/v1/deployments" "{\"serviceName\":\"$service\",\"environment\":\"$env\",\"imageTag\":\"$image\",\"deployedBy\":\"$deployed_by\"}"
+    ;;
+  rollback)
+    id="${1:-}"
+    shift || true
+    deployed_by="${USER:-cli}"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --by) deployed_by="${2:-}"; shift 2 ;;
+        *) usage; exit 2 ;;
+      esac
+    done
+    require_value "DEPLOYMENT_ID" "$id"
+    json_post "/v1/deployments/$id/rollback" "{\"deployedBy\":\"$deployed_by\"}"
+    ;;
+  -h|--help|help|"")
+    usage
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

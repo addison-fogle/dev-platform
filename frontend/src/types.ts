@@ -1,4 +1,4 @@
-export type DeploymentStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+export type DeploymentStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'STOPPED'
 
 export interface Service {
   id: number

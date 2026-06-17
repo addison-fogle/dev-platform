@@ -30,6 +30,7 @@ public class DeploymentManagerTest {
     @Mock private EnvironmentRepository environmentRepository;
     @Mock private HistoryManager historyManager;
     @Mock private DeploymentEventPublisher eventPublisher;
+    @Mock private DeploymentPolicy deploymentPolicy;
 
     private SimpleMeterRegistry meterRegistry;
     private DeploymentManager manager;
@@ -40,7 +41,7 @@ public class DeploymentManagerTest {
         meterRegistry = new SimpleMeterRegistry();
         manager = new DeploymentManager(
             deploymentRepository, serviceRepository, environmentRepository,
-            historyManager, meterRegistry, eventPublisher);
+            historyManager, meterRegistry, eventPublisher, deploymentPolicy);
     }
 
     @Test
@@ -121,6 +122,49 @@ public class DeploymentManagerTest {
         assertThat(result.getStatus()).isEqualTo(DeploymentStatus.PENDING);
         assertThat(result.isCurrent()).isFalse();
         assertThat(result.getImageTag()).isEqualTo("v2.0.0");
+        verify(deploymentPolicy).validateCreate(any(), eq(service), eq(env));
+    }
+
+    @Test
+    void rollback_createsPendingDeploymentFromPreviousSuccessfulImage() {
+        Service service = new Service();
+        service.setName("api");
+        Environment env = new Environment();
+        env.setName("production");
+
+        Deployment target = deployment(10L, service, env, DeploymentStatus.SUCCEEDED);
+        target.setImageTag("v2.0.0");
+        Deployment previous = deployment(9L, service, env, DeploymentStatus.SUCCEEDED);
+        previous.setImageTag("v1.0.0");
+
+        when(deploymentRepository.findById(10L)).thenReturn(Optional.of(target));
+        when(deploymentRepository.findTopByServiceAndEnvironmentAndStatusAndIdLessThanOrderByIdDesc(
+                service, env, DeploymentStatus.SUCCEEDED, 10L)).thenReturn(Optional.of(previous));
+        when(deploymentRepository.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+
+        Deployment result = manager.rollback(10L, "alice", "rollback-10");
+
+        assertThat(result.getStatus()).isEqualTo(DeploymentStatus.PENDING);
+        assertThat(result.getImageTag()).isEqualTo("v1.0.0");
+        assertThat(result.getDeployedBy()).isEqualTo("alice");
+        verify(historyManager).record(any(), eq(null), eq(DeploymentStatus.PENDING));
+        assertThat(meterRegistry.counter("deployments.rollback.created", "environment", "production").count())
+            .isEqualTo(1.0);
+    }
+
+    @Test
+    void rollback_throwsWhenNoPreviousSuccessfulDeploymentExists() {
+        Service service = new Service();
+        Environment env = new Environment();
+        Deployment target = deployment(10L, service, env, DeploymentStatus.SUCCEEDED);
+
+        when(deploymentRepository.findById(10L)).thenReturn(Optional.of(target));
+        when(deploymentRepository.findTopByServiceAndEnvironmentAndStatusAndIdLessThanOrderByIdDesc(
+                service, env, DeploymentStatus.SUCCEEDED, 10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> manager.rollback(10L, "alice", null))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("No previous successful deployment");
     }
 
     @Test
