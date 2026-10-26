@@ -14,7 +14,7 @@ spec:
     app: frontend
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -32,6 +32,10 @@ spec:
         app: frontend
     spec:
       serviceAccountName: frontend
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: frontend
           image: ghcr.io/addison-fogle/dev-platform-frontend:latest
@@ -40,11 +44,11 @@ spec:
             capabilities:
               drop: ["ALL"]
           ports:
-            - containerPort: 80
+            - containerPort: 8080
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
@@ -101,4 +105,4 @@ spec:
         - namespaceSelector: {}
       ports:
         - protocol: TCP
-          port: 80
+          port: 8080
