@@ -2,6 +2,7 @@
 set -euo pipefail
 
 BASE_URL="${DEV_PLATFORM_URL:-http://localhost:8080}"
+TOKEN="${DEV_PLATFORM_TOKEN:-}"
 
 usage() {
   cat <<'EOF'
@@ -14,20 +15,28 @@ Usage:
   dev-platform rollback DEPLOYMENT_ID [--by USER]
 
 Environment:
-  DEV_PLATFORM_URL  API base URL, defaults to http://localhost:8080
+  DEV_PLATFORM_URL    API base URL, defaults to http://localhost:8080
+  DEV_PLATFORM_TOKEN  OIDC access token sent as a Bearer token
 EOF
+}
+
+auth_header() {
+  if [[ -n "$TOKEN" ]]; then
+    printf 'Authorization: Bearer %s' "$TOKEN"
+  fi
 }
 
 json_post() {
   local path="$1"
   local body="$2"
   curl -sS -X POST "$BASE_URL$path" \
+    -H "$(auth_header)" \
     -H 'Content-Type: application/json' \
     -d "$body"
 }
 
 get() {
-  curl -sS "$BASE_URL$1"
+  curl -sS -H "$(auth_header)" "$BASE_URL$1"
 }
 
 require_value() {

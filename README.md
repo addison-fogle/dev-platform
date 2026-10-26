@@ -1,8 +1,33 @@
-# Development Platform
+# Dev Platform
 
-A lightweight internal developer platform for standardizing how services are deployed, tracked, and operated on Kubernetes.
+A lightweight internal developer platform that gives service teams a paved path for deploying to Kubernetes: one API, UI, and CLI for registering services, requesting deployments, enforcing production guardrails, and seeing exactly what version is running where.
 
-This project models a common platform engineering problem: teams need a paved path for deployments, a reliable source of truth for what is running, and operational guardrails that reduce production risk without forcing every service team to become Kubernetes experts.
+**Stack:** Java 21 · Spring Boot 4 · Spring Security (OAuth2/OIDC) · PostgreSQL · RabbitMQ · React + TypeScript · Docker · Kubernetes · Helm · Terraform (AWS EKS) · Prometheus/Grafana · GitHub Actions · Semgrep · Grype
+
+---
+
+## Highlights
+
+### Backend
+- REST API under `/v1` with an [OpenAPI 3.1 spec](dev-platform-api.yaml), bean validation, and centralized error handling
+- **Idempotent writes**: `Idempotency-Key` header backed by a unique constraint, safe under concurrent retries
+- **Rollback as a new, auditable deployment** rather than mutating history
+- Deployment events published to RabbitMQ only **after the database transaction commits**, asynchronously
+- Full status history per deployment, and a "current version per environment" view
+- Custom Micrometer metrics (status transitions, rollbacks) and request-ID correlation in logs (MDC)
+
+### Platform & infrastructure
+- Kubernetes manifests and a Helm chart with readiness/liveness probes, resource requests/limits, HPAs, PodDisruptionBudgets, NetworkPolicies, ServiceAccounts, and least-privilege RBAC
+- Terraform for AWS: VPC, EKS, ingress-nginx, kube-prometheus-stack, and the platform's own Helm release, with remote state in S3
+- Prometheus `ServiceMonitor`, alert rules, and a Grafana dashboard
+- GitOps desired-state example for Argo CD / Flux style reconciliation
+
+### Security / DevSecOps
+- **OIDC/JWT-protected API** with role-based access (`VIEWER` reads, `OPERATOR` writes); fails closed if no issuer is configured
+- **Production guardrails**: immutable image tags, required service owner, deployer identity, and namespace
+- **Pod hardening**: `runAsNonRoot`, `seccompProfile: RuntimeDefault`, no privilege escalation, all capabilities dropped
+- **CI security gates**: Semgrep SAST on every PR and Grype vulnerability scans of both container images (fails on fixable high/critical CVEs)
+- Workflow token scoped to `contents: read`
 
 ---
 
@@ -10,90 +35,77 @@ This project models a common platform engineering problem: teams need a paved pa
 
 Kubernetes is powerful but low-level. In many teams:
 
-- deployments are inconsistent
-- configurations vary between developers
-- there is no clear record of what is running where
-- teams do not know exactly what version is on production
-- too much outage time is spent discovering deployment versions
-- one configuration mistake can bring down an entire service
+- deployments are inconsistent and configuration drifts between developers
+- there is no single record of what is running where
+- incident time is lost just figuring out which version is in production
+- one configuration mistake can take down a service
 
-This project introduces a service layer that:
-
-- standardizes deployments
-- simplifies developer workflows
-- tracks deployment state centrally
-- enforces production deployment guardrails
-- exposes platform telemetry for operators
-
----
-
-## What it does
-
-- Register services and environments
-- Deploy containers to Kubernetes
-- Store deployment history and status
-- Show current deployments by environment
-- Roll back to a previous successful deployment
-- Publish deployment lifecycle events to RabbitMQ
-- Expose Prometheus metrics through Spring Actuator
-- Package the platform with Docker, Kubernetes manifests, Helm, and Terraform
-
----
-
-## Core components
-
-- Registry: source of truth for services and environments
-- Deployment service: handles deploy, status, history, and rollback requests
-- Policy layer: validates production deployment guardrails
-- Event bus: publishes deployment lifecycle events
-- Database: tracks services, environments, deployments, and history
-- Kubernetes layer: static manifests, Helm chart, and Terraform wiring
-- UI: service, environment, deployment, history, and rollback workflows
-- CLI: command-line access to common platform actions
+This platform puts a service layer in front of the cluster that standardizes deployments, tracks deployment state centrally, enforces production guardrails, and exposes telemetry for operators.
 
 ---
 
 ## How it works
 
-1. Register a service.
-2. Define environment configs such as dev, staging, and production.
-3. Trigger a deployment through the API, UI, or CLI.
-4. The platform validates deployment policy.
-5. The platform records the deployment as pending.
-6. The platform publishes an event for downstream automation.
-7. Kubernetes desired state is applied directly or through a GitOps workflow.
-8. Deployment status and history are tracked.
-9. Current production versions are visible from one place.
+1. Register a service and its environments (dev, staging, production).
+2. Request a deployment through the API, UI, or CLI.
+3. The platform validates deployment policy.
+4. The deployment is recorded as `PENDING` with full history.
+5. A `deployment.created` event is published to RabbitMQ after commit.
+6. A consumer (a deploy worker, or a GitOps commit picked up by Argo CD/Flux) applies the desired state to the cluster and reports status back through `PATCH /v1/deployments/{id}/status`.
+7. On success the deployment becomes the current version for that environment.
+
+> The platform is the control plane and source of truth. It does not itself call the Kubernetes API yet; see [Roadmap](#roadmap).
+
+See [docs/architecture.md](docs/architecture.md) for the component diagram, deployment and rollback flows, data model, and tradeoffs. Related: [deployment policies](docs/policies.md), [GitOps integration](docs/gitops.md), [observability](infra/observability/README.md).
 
 ---
 
-## What this demonstrates
+## Quickstart
 
-- Spring Boot API design with validation, exception handling, idempotency, and transactional event publication
-- React UI for service, environment, and deployment workflows
-- Rollback workflow modeled as a new auditable deployment
-- Production deployment guardrails for immutable tags, ownership, deployer identity, and namespaces
-- PostgreSQL persistence with JPA repositories
-- RabbitMQ event publishing
-- Prometheus metrics and Kubernetes health probes
-- Docker Compose for dependent services
-- Kubernetes manifests with probes, resource limits, service accounts, RBAC, PDBs, HPAs, and NetworkPolicies
-- Helm chart packaging
-- Terraform infrastructure wiring
-- GitHub Actions CI for backend, frontend, Docker, Helm, and Terraform checks
-- GitOps-oriented desired-state examples
+### Run everything with Docker Compose
+
+```bash
+cp .env.example .env
+```
+
+Set `DEVPLATFORM_JWT_ISSUER_URI` in `.env` to your OIDC provider (Okta, Auth0, Keycloak, Cognito, ...), then:
+
+```bash
+docker compose up --build
+```
+
+| Service | URL |
+| --- | --- |
+| API | http://localhost:8080 |
+| UI | http://localhost:8081 |
+| RabbitMQ management | http://localhost:15672 |
+
+### Run the backend tests
+
+Requires JDK 21+.
+
+```bash
+mvn test
+```
+
+### Build the frontend
+
+```bash
+cd frontend && npm ci && npm run build
+```
 
 ---
 
-## Architecture
+## Authentication
 
-See [docs/architecture.md](docs/architecture.md) for the component diagram, deployment flow, rollback flow, data model, Kubernetes boundary, observability model, and tradeoffs.
+The API is an OAuth2 resource server. Every `/v1` request needs an access token from the issuer configured in `DEVPLATFORM_JWT_ISSUER_URI`.
 
-Related docs:
+| Role | Access |
+| --- | --- |
+| `VIEWER` | `GET` on all `/v1` endpoints |
+| `OPERATOR` | everything, including create, rollback, status updates, and delete |
 
-- [Deployment policies](docs/policies.md)
-- [GitOps integration](docs/gitops.md)
-- [Observability](infra/observability/README.md)
+Roles are read from the token's `roles` claim. Set `DEVPLATFORM_JWT_ROLES_CLAIM` if your provider uses a different claim. Health and Prometheus endpoints stay open for probes and scraping.
 
 ---
 
@@ -103,6 +115,7 @@ Related docs:
 
 ```http
 POST /v1/deployments
+Authorization: Bearer <token>
 Content-Type: application/json
 Idempotency-Key: deploy-payments-v1
 ```
@@ -116,10 +129,11 @@ Idempotency-Key: deploy-payments-v1
 }
 ```
 
-### Roll Back
+### Roll back
 
 ```http
 POST /v1/deployments/42/rollback
+Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
@@ -129,19 +143,19 @@ Content-Type: application/json
 }
 ```
 
-### Current Deployments
+### Current deployments
 
 ```http
 GET /v1/deployments/current?environment=production
+Authorization: Bearer <token>
 ```
 
 ---
 
 ## CLI
 
-The repo includes a small shell CLI for common platform workflows:
-
 ```bash
+export DEV_PLATFORM_TOKEN=<access token>
 bin/dev-platform services list
 bin/dev-platform environments list
 bin/dev-platform deploy payments-api --env dev --image payments-api:v1 --by alice
@@ -155,48 +169,100 @@ Set `DEV_PLATFORM_URL` to point the CLI at a non-default API host.
 
 ## Production guardrails
 
-Production deployments are identified by environment name `prod` or `production`.
+Environments named `prod` or `production` require:
 
-For production deployments, the platform requires:
-
-- immutable image tags, not `latest`
-- service owner
+- an immutable image tag (not `latest`)
+- a service owner
 - deployer identity
-- environment namespace
+- an environment namespace
 
-These are intentionally small, readable rules that show where platform policy belongs.
+These are deliberately small, readable rules that show where platform policy belongs. See [docs/policies.md](docs/policies.md).
 
 ---
 
-## Platform artifacts
+## CI pipeline
 
-- `.github/workflows/ci.yml`: backend, frontend, Docker, Helm, and Terraform validation
-- `infra/k8s`: static Kubernetes manifests
-- `infra/helm/dev-platform`: Helm chart
-- `infra/terraform`: AWS/EKS infrastructure wiring
-- `infra/observability`: Prometheus alerts and Grafana dashboard seed
-- `infra/gitops`: desired-state example for GitOps workflows
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request and push to `main`:
+
+| Job | What it checks |
+| --- | --- |
+| Backend tests | `mvn test`, including authorization tests (401/403 paths) |
+| Frontend build | TypeScript compile and Vite build |
+| Semgrep SAST | `p/default`, `p/java`, `p/typescript` rule sets; any finding fails the build |
+| Platform artifacts | Builds both images, scans them with Grype, lints the Helm chart, and runs `terraform fmt` / `validate` |
+
+An image publishing and EKS deploy workflow (GHCR, multi-arch builds, AWS OIDC role assumption) is drafted in [`publish-images.yml`](.github/workflows/publish-images.yml) and currently disabled.
+
+---
+
+## Deploying to AWS
+
+1. Create an S3 bucket for Terraform state and set it in the `backend "s3"` block in [`infra/terraform/main.tf`](infra/terraform/main.tf).
+2. Set `auth.issuerUri` (and real database credentials) in [`infra/helm/dev-platform/values.yaml`](infra/helm/dev-platform/values.yaml).
+3. Apply:
+
+```bash
+cd infra/terraform && terraform init && terraform apply
+```
+
+This provisions the VPC and EKS cluster, installs ingress-nginx and kube-prometheus-stack, and deploys the platform's Helm release.
+
+---
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `src/` | Spring Boot API |
+| `frontend/` | React + TypeScript UI |
+| `bin/dev-platform` | Shell CLI |
+| `infra/k8s` | Static Kubernetes manifests |
+| `infra/helm/dev-platform` | Helm chart |
+| `infra/terraform` | AWS VPC, EKS, and Helm release wiring |
+| `infra/observability` | Prometheus alerts and Grafana dashboard |
+| `infra/gitops` | GitOps desired-state example |
+| `docs/` | Architecture, policies, GitOps notes |
 
 ---
 
 ## Limitations
 
-- No full CI/CD pipeline orchestrator
-- No frontend login flow yet (the API requires OIDC bearer tokens)
-- Kubernetes apply worker is intentionally lightweight
-- No production approval workflow yet
+- No deploy worker yet: the platform records and announces deployments, and status is reported back through the API
+- The UI has no login flow, so it cannot call the protected API yet
+- The schema is managed by Hibernate `ddl-auto=update` rather than versioned migrations
+- Database and RabbitMQ credentials in the Helm values are development defaults
+- Event publishing is best-effort after commit; there is no transactional outbox
+- No production approval workflow
 
 ---
 
-## Future Improvements
+## Roadmap
 
-- GitHub/GitLab pull-request based deployment approvals
-- Argo CD or Flux controller integration
-- Image signing and provenance checks
-- Service catalog ownership metadata
-- Deployment notifications
-- Multi-cluster environment routing
-- SLO and incident integration
+### Backend
+- Deploy worker that consumes deployment events and applies them with the Kubernetes Java client under scoped RBAC, or commits desired state for Argo CD
+- Flyway migrations in place of `ddl-auto`
+- Testcontainers integration tests against real PostgreSQL and RabbitMQ
+- Transactional outbox for guaranteed event delivery
+- Take `deployedBy` from the authenticated token instead of the request body
+- RFC 9457 problem-details errors, pagination, and rate limiting
+- OpenTelemetry tracing across API, database, and message bus
+
+### Platform & infrastructure
+- Enable the publish/deploy workflow, and add an end-to-end smoke test on a `kind` cluster in CI
+- Argo CD application manifests for the platform itself
+- Secrets from AWS Secrets Manager via External Secrets Operator and IRSA instead of Helm values
+- Per-environment Terraform workspaces or tfvars, plus state locking
+- SLOs with burn-rate alerts
+
+### Security / DevSecOps
+- Image signing with Cosign, SBOM generation with Syft, and SLSA build provenance
+- Admission policy with Kyverno or OPA Gatekeeper that only allows signed images with immutable tags
+- Secret scanning (Gitleaks) and IaC scanning (Checkov or Trivy config) in CI
+- Dependabot or Renovate for dependency updates, with GitHub Actions pinned to commit SHAs
+- Distroless, non-root runtime images
+- PR-based production approvals with an audit trail
+
+---
 
 ## License
 
