@@ -1,5 +1,6 @@
 package com.devplatform.controller;
 
+import com.devplatform.config.SecurityConfig;
 import com.devplatform.model.Deployment;
 import com.devplatform.model.DeploymentStatus;
 import com.devplatform.model.Environment;
@@ -7,10 +8,14 @@ import com.devplatform.model.Service;
 import com.devplatform.service.DeploymentManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testng.annotations.Test;
 
 import java.time.Instant;
@@ -19,21 +24,25 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(DeploymentController.class)
+@Import(SecurityConfig.class)
+@TestPropertySource(properties = "DEVPLATFORM_JWT_ISSUER_URI=https://issuer.test/")
 public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
 
     @Autowired MockMvc mockMvc;
+    @Autowired JwtAuthenticationConverter jwtAuthenticationConverter;
     @MockitoBean DeploymentManager deploymentManager;
+    @MockitoBean JwtDecoder jwtDecoder;
 
     @Test
-    @WithMockUser
     void getAll_returnsOkWithDeploymentList() throws Exception {
         when(deploymentManager.getAll()).thenReturn(List.of(deployment(DeploymentStatus.RUNNING, false)));
 
-        mockMvc.perform(get("/v1/deployments"))
+        mockMvc.perform(get("/v1/deployments").with(token("VIEWER")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].status").value("RUNNING"))
             .andExpect(jsonPath("$[0].service.name").value("api"))
@@ -41,11 +50,10 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    @WithMockUser
     void create_returns201WithPendingDeployment() throws Exception {
         when(deploymentManager.create(any(), any())).thenReturn(deployment(DeploymentStatus.PENDING, false));
 
-        mockMvc.perform(post("/v1/deployments")
+        mockMvc.perform(post("/v1/deployments").with(token("OPERATOR"))
                 .contentType("application/json")
                 .content("""
                     {"serviceName":"api","environment":"production","imageTag":"v1.0.0","deployedBy":"alice"}
@@ -56,12 +64,11 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    @WithMockUser
     void updateStatus_toSucceeded_returnsCurrentDeployment() throws Exception {
         Deployment succeeded = deployment(DeploymentStatus.SUCCEEDED, true);
         when(deploymentManager.updateStatus(eq(1L), eq(DeploymentStatus.SUCCEEDED))).thenReturn(succeeded);
 
-        mockMvc.perform(patch("/v1/deployments/1/status")
+        mockMvc.perform(patch("/v1/deployments/1/status").with(token("OPERATOR"))
                 .contentType("application/json")
                 .content("\"SUCCEEDED\""))
             .andExpect(status().isOk())
@@ -70,11 +77,10 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    @WithMockUser
     void rollback_returns201WithPendingDeployment() throws Exception {
         when(deploymentManager.rollback(eq(1L), eq("alice"), any())).thenReturn(deployment(DeploymentStatus.PENDING, false));
 
-        mockMvc.perform(post("/v1/deployments/1/rollback")
+        mockMvc.perform(post("/v1/deployments/1/rollback").with(token("OPERATOR"))
                 .contentType("application/json")
                 .content("""
                     {"deployedBy":"alice"}
@@ -84,24 +90,48 @@ public class DeploymentControllerTest extends AbstractTestNGSpringContextTests {
     }
 
     @Test
-    @WithMockUser
     void getHistory_returnsOk() throws Exception {
         when(deploymentManager.getHistory(1L)).thenReturn(List.of());
 
-        mockMvc.perform(get("/v1/deployments/1/history"))
+        mockMvc.perform(get("/v1/deployments/1/history").with(token("VIEWER")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$").isArray());
     }
 
     @Test
-    @WithMockUser
     void getCurrent_returnsDeploymentsForEnvironment() throws Exception {
         when(deploymentManager.getCurrentByEnvironment("production"))
             .thenReturn(List.of(deployment(DeploymentStatus.SUCCEEDED, true)));
 
-        mockMvc.perform(get("/v1/deployments/current").param("environment", "production"))
+        mockMvc.perform(get("/v1/deployments/current").param("environment", "production").with(token("VIEWER")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].current").value(true));
+    }
+
+    @Test
+    void unauthenticated_returns401() throws Exception {
+        mockMvc.perform(get("/v1/deployments"))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void viewer_cannotCreate_returns403() throws Exception {
+        mockMvc.perform(post("/v1/deployments").with(token("VIEWER"))
+                .contentType("application/json")
+                .content("""
+                    {"serviceName":"api","environment":"production","imageTag":"v1.0.0","deployedBy":"alice"}
+                    """))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void tokenWithoutPlatformRole_returns403() throws Exception {
+        mockMvc.perform(get("/v1/deployments").with(token()))
+            .andExpect(status().isForbidden());
+    }
+
+    private RequestPostProcessor token(String... roles) {
+        return jwt().jwt(j -> j.claim("roles", List.of(roles))).authorities(j -> List.copyOf(jwtAuthenticationConverter.convert(j).getAuthorities()));
     }
 
     private Deployment deployment(DeploymentStatus status, boolean current) {

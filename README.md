@@ -182,7 +182,7 @@ These are intentionally small, readable rules that show where platform policy be
 ## Limitations
 
 - No full CI/CD pipeline orchestrator
-- Minimal authentication
+- No frontend login flow yet (the API requires OIDC bearer tokens)
 - Kubernetes apply worker is intentionally lightweight
 - No production approval workflow yet
 

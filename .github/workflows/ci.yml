@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Backend tests
@@ -37,6 +40,16 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+  semgrep:
+    name: Semgrep SAST
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: semgrep scan --config p/default --config p/java --config p/typescript --error --metrics=off
+
   platform-artifacts:
     name: Platform artifact validation
     runs-on: ubuntu-latest
@@ -48,6 +61,22 @@ jobs:
         run: docker build -t dev-platform-backend:test .
       - name: Build frontend image
         run: docker build -t dev-platform-frontend:test frontend
+      - name: Scan backend image
+        uses: anchore/scan-action@v6
+        with:
+          image: dev-platform-backend:test
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
+      - name: Scan frontend image
+        uses: anchore/scan-action@v6
+        with:
+          image: dev-platform-frontend:test
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table
       - name: Lint Helm chart
         run: helm lint infra/helm/dev-platform
       - name: Validate Terraform

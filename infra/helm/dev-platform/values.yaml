@@ -70,6 +70,12 @@ rabbitmq:
     limits:
       memory: 512Mi
 
+auth:
+  # OIDC issuer whose JWTs the backend accepts, e.g. https://login.example.com/realms/dev-platform
+  issuerUri: https://issuer.example.com/
+  # Token claim holding the user's roles (VIEWER, OPERATOR)
+  rolesClaim: roles
+
 ingress:
   host: dev-platform.local
   className: nginx

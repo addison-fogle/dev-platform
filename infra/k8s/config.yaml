@@ -7,6 +7,8 @@ data:
   DEVPLATFORM_RABBIT_EXCHANGE: deployments
   SPRING_DATASOURCE_URL: jdbc:postgresql://postgres.dev-platform.svc.cluster.local:5432/devplatform
   SPRING_RABBITMQ_HOST: rabbitmq.dev-platform.svc.cluster.local
+  DEVPLATFORM_JWT_ISSUER_URI: https://issuer.example.com/
+  DEVPLATFORM_JWT_ROLES_CLAIM: roles
 ---
 apiVersion: v1
 kind: Secret
